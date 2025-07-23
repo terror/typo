@@ -64,7 +64,7 @@ jobs:
         run: cargo build
 
       - name: Lockfile
-        run: cargo update --locked --package {null}
+        run: cargo update --locked --package typo
 
       - name: Lint
         run: cargo clippy --all-targets --all-features
