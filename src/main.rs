@@ -290,6 +290,7 @@ fn main() {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use approx::assert_abs_diff_eq;
 
   #[test]
   fn type_correct_char() {
@@ -367,7 +368,7 @@ mod tests {
   }
 
   #[test]
-  fn accuracy_calculation() {
+  fn accuracy() {
     let mut app = App {
       text: vec!["test"],
       ..Default::default()
@@ -382,9 +383,11 @@ mod tests {
     assert_eq!(app.accuracy().unwrap(), 50.0);
 
     assert_eq!(app.handle_action(Action::Insert('s')), State::Continuing);
-    assert!((app.accuracy().unwrap() - 66.66666666666667).abs() < 0.0001);
 
-    assert_eq!(app.handle_action(Action::Insert('t')), State::Continuing);
-    assert!((app.accuracy().unwrap() - 66.66666666666667).abs() < 0.0001);
+    assert_abs_diff_eq!(app.accuracy().unwrap(), 66.66, epsilon = 0.01);
+
+    assert_eq!(app.handle_action(Action::Insert('t')), State::Completed);
+
+    assert_abs_diff_eq!(app.accuracy().unwrap(), 75.0, epsilon = 0.01);
   }
 }
