@@ -75,16 +75,16 @@ impl Display for Statistics {
 }
 
 #[derive(Clone, Debug)]
-struct App<'a> {
+struct App {
   characters: usize,
   errors: usize,
   input: String,
   position: usize,
   start_time: Instant,
-  text: Vec<&'a str>,
+  text: String
 }
 
-impl Default for App<'_> {
+impl Default for App {
   fn default() -> Self {
     Self {
       characters: 0,
@@ -92,7 +92,7 @@ impl Default for App<'_> {
       input: String::new(),
       position: 0,
       start_time: Instant::now(),
-      text: Vec::new(),
+      text: String::new()
     }
   }
 }
@@ -103,7 +103,7 @@ macro_rules! command {
   };
 }
 
-impl<'a> App<'a> {
+impl App {
   fn new() -> Self {
     let mut generator = rand::thread_rng();
 
@@ -118,7 +118,7 @@ impl<'a> App<'a> {
       input: String::new(),
       position: 0,
       start_time: Instant::now(),
-      text,
+      text: text.join(" "),
     }
   }
 
@@ -146,7 +146,7 @@ impl<'a> App<'a> {
 
     let input_characters = self.input.chars().collect::<Vec<char>>();
 
-    for (i, expected_character) in self.text.join(" ").chars().enumerate() {
+    for (i, expected_character) in self.text.chars().enumerate() {
       command!(SetForegroundColor(match i.cmp(&self.position) {
         Ordering::Less => match input_characters.get(i) {
           Some(&typed_character) if typed_character == expected_character => Color::Green,
@@ -159,15 +159,9 @@ impl<'a> App<'a> {
       print!("{}", expected_character);
     }
 
-    command!(ResetColor)?;
+    command!(ResetColor, MoveToColumn(0))?;
 
-    println!("\n");
-
-    let statistics = self.statistics()?;
-
-    command!(MoveToColumn(0))?;
-
-    print!("{statistics}");
+    print!("\n\n{}", self.statistics()?);
 
     stdout().flush()?;
 
@@ -189,7 +183,7 @@ impl<'a> App<'a> {
       }
       Action::Escape => State::Quit,
       Action::Insert(c) => {
-        let target_chars = self.text.join(" ").chars().collect::<Vec<char>>();
+        let target_chars = self.text.chars().collect::<Vec<char>>();
 
         if self.position < target_chars.len() {
           let expected_char = target_chars[self.position];
@@ -226,7 +220,7 @@ impl<'a> App<'a> {
           match self.handle_action(action) {
             State::Completed => {
               command!(Clear(ClearType::All), MoveTo(0, 0))?;
-              println!("{}", self.statistics()?);
+              println!("{}\n", self.statistics()?);
               break;
             }
             State::Quit => break,
@@ -289,13 +283,12 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-  use super::*;
-  use approx::assert_abs_diff_eq;
+  use {super::*, approx::assert_abs_diff_eq};
 
   #[test]
   fn type_correct_char() {
     let mut app = App {
-      text: vec!["hello"],
+      text: "hello".into(),
       ..Default::default()
     };
 
@@ -310,7 +303,7 @@ mod tests {
   #[test]
   fn type_incorrect_char() {
     let mut app = App {
-      text: vec!["hello"],
+      text: "hello".into(),
       ..Default::default()
     };
 
@@ -325,7 +318,7 @@ mod tests {
   #[test]
   fn complete_typing() {
     let mut app = App {
-      text: vec!["hi"],
+      text: "hi".into(),
       ..Default::default()
     };
 
@@ -337,7 +330,7 @@ mod tests {
   #[test]
   fn backspace() {
     let mut app = App {
-      text: vec!["hello"],
+      text: "hello".into(),
       ..Default::default()
     };
 
@@ -357,7 +350,7 @@ mod tests {
   #[test]
   fn backspace_empty() {
     let mut app = App {
-      text: vec!["hello"],
+      text: "hello".into(),
       ..Default::default()
     };
 
@@ -370,7 +363,7 @@ mod tests {
   #[test]
   fn accuracy() {
     let mut app = App {
-      text: vec!["test"],
+      text: "test".into(),
       ..Default::default()
     };
 
@@ -389,5 +382,31 @@ mod tests {
     assert_eq!(app.handle_action(Action::Insert('t')), State::Completed);
 
     assert_abs_diff_eq!(app.accuracy().unwrap(), 75.0, epsilon = 0.01);
+  }
+
+  #[test]
+  fn wpm() {
+    let mut app = App {
+      text: "hello world test".into(),
+      ..Default::default()
+    };
+
+    app.start_time = Instant::now() - Duration::from_secs(60);
+
+    for c in "hello worl".chars() {
+      app.handle_action(Action::Insert(c));
+    }
+
+    assert_abs_diff_eq!(app.wpm().unwrap(), 2.0, epsilon = 0.01);
+
+    app.start_time = Instant::now() - Duration::from_secs(30);
+
+    assert_abs_diff_eq!(app.wpm().unwrap(), 4.0, epsilon = 0.01);
+
+    for c in "d test".chars() {
+      app.handle_action(Action::Insert(c));
+    }
+
+    assert_abs_diff_eq!(app.wpm().unwrap(), 6.0, epsilon = 0.01);
   }
 }
