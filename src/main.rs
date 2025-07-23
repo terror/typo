@@ -1,4 +1,5 @@
 use {
+  crate::action::Action,
   anyhow::{anyhow, bail},
   crossterm::{
     cursor::{MoveTo, MoveToColumn},
@@ -17,6 +18,8 @@ use {
   },
 };
 
+mod action;
+
 const WORDS: &[&str] = &[
   "the", "be", "to", "of", "and", "a", "in", "that", "have", "i", "it", "for", "not", "on", "with",
   "he", "as", "you", "do", "at", "this", "but", "his", "by", "from", "they", "we", "say", "her",
@@ -33,27 +36,6 @@ enum State {
   Completed,
   Continuing,
   Quit,
-}
-
-#[derive(Debug)]
-enum Action {
-  Delete,
-  Escape,
-  Insert(char),
-}
-
-impl Action {
-  fn from_event(event: Event) -> Option<Self> {
-    match event {
-      Event::Key(key) => match key.code {
-        KeyCode::Backspace => Some(Self::Delete),
-        KeyCode::Char(c) => Some(Self::Insert(c)),
-        KeyCode::Esc => Some(Self::Escape),
-        _ => None,
-      },
-      _ => None,
-    }
-  }
 }
 
 #[derive(Debug, Clone)]
@@ -81,7 +63,7 @@ struct App {
   input: String,
   position: usize,
   start_time: Instant,
-  text: String
+  text: String,
 }
 
 impl Default for App {
@@ -92,7 +74,7 @@ impl Default for App {
       input: String::new(),
       position: 0,
       start_time: Instant::now(),
-      text: String::new()
+      text: String::new(),
     }
   }
 }
