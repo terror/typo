@@ -1,6 +1,7 @@
 use {
-  crate::{action::Action, app::App, state::State, statistics::Statistics},
+  crate::{action::Action, app::App, arguments::Arguments, state::State, statistics::Statistics},
   anyhow::{anyhow, bail},
+  clap::Parser,
   crossterm::{
     cursor::{MoveTo, MoveToColumn},
     event::{self, Event, KeyCode},
@@ -20,6 +21,7 @@ use {
 
 mod action;
 mod app;
+mod arguments;
 mod state;
 mod statistics;
 
@@ -44,7 +46,7 @@ macro_rules! command {
 type Result<T = (), E = anyhow::Error> = std::result::Result<T, E>;
 
 fn main() {
-  if let Err(error) = App::new().run() {
+  if let Err(error) = Arguments::parse().run() {
     eprintln!("error: {error}");
     process::exit(1);
   }

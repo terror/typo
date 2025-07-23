@@ -24,21 +24,17 @@ impl Default for App {
 }
 
 impl App {
-  pub(crate) fn new() -> Self {
+  pub(crate) fn new(word_count: usize) -> Self {
     let mut generator = rand::thread_rng();
 
-    let text = (0..100)
+    let text = (0..word_count)
       .map(|_| WORDS.choose(&mut generator).unwrap())
       .cloned()
       .collect::<Vec<&str>>();
 
     Self {
-      characters: 0,
-      errors: 0,
-      input: String::new(),
-      position: 0,
-      start_time: Instant::now(),
       text: text.join(" "),
+      ..Default::default()
     }
   }
 
