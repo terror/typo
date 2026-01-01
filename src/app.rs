@@ -131,17 +131,17 @@ impl App {
     loop {
       self.display()?;
 
-      if event::poll(Duration::from_millis(100))? {
-        if let Some(action) = Action::from_event(event::read()?) {
-          match self.handle_action(action) {
-            State::Completed => {
-              command!(Clear(ClearType::All), MoveTo(0, 0))?;
-              println!("{}\n", self.statistics()?);
-              break;
-            }
-            State::Quit => break,
-            State::Continuing => continue,
+      if event::poll(Duration::from_millis(100))?
+        && let Some(action) = Action::from_event(event::read()?)
+      {
+        match self.handle_action(action) {
+          State::Completed => {
+            command!(Clear(ClearType::All), MoveTo(0, 0))?;
+            println!("{}\n", self.statistics()?);
+            break;
           }
+          State::Quit => break,
+          State::Continuing => continue,
         }
       }
     }
