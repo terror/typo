@@ -24,23 +24,9 @@ impl Default for App {
 }
 
 impl App {
-  pub(crate) fn new(word_count: usize) -> Self {
-    let mut generator = rand::thread_rng();
-
-    let text = (0..word_count)
-      .map(|_| WORDS.choose(&mut generator).unwrap())
-      .cloned()
-      .collect::<Vec<&str>>();
-
-    Self {
-      text: text.join(" "),
-      ..Default::default()
-    }
-  }
-
   fn accuracy(&self) -> Result<f64> {
     if self.characters == 0 {
-      return Ok(100.00);
+      return Ok(100.0);
     }
 
     let correct_chars = self
@@ -48,7 +34,15 @@ impl App {
       .checked_sub(self.errors)
       .ok_or_else(|| anyhow!("character count underflow"))?;
 
-    let accuracy = (correct_chars as f64 / self.characters as f64) * 100.0;
+    let correct_chars = u32::try_from(correct_chars)
+      .map(f64::from)
+      .map_err(|_| anyhow!("correct character count too large for accuracy calculation"))?;
+
+    let total_chars = u32::try_from(self.characters)
+      .map(f64::from)
+      .map_err(|_| anyhow!("character count too large for accuracy calculation"))?;
+
+    let accuracy = (correct_chars / total_chars) * 100.0;
 
     if accuracy.is_finite() {
       Ok(accuracy)
@@ -72,7 +66,7 @@ impl App {
         Ordering::Greater => Color::White,
       }))?;
 
-      print!("{}", expected_character);
+      print!("{expected_character}");
     }
 
     command!(ResetColor, MoveToColumn(0))?;
@@ -125,6 +119,20 @@ impl App {
     }
   }
 
+  pub(crate) fn new(word_count: usize) -> Self {
+    let mut generator = rand::thread_rng();
+
+    let text = (0..word_count)
+      .map(|_| WORDS.choose(&mut generator).unwrap())
+      .copied()
+      .collect::<Vec<&str>>();
+
+    Self {
+      text: text.join(" "),
+      ..Default::default()
+    }
+  }
+
   pub(crate) fn run(&mut self) -> Result {
     terminal::enable_raw_mode()?;
 
@@ -141,7 +149,7 @@ impl App {
             break;
           }
           State::Quit => break,
-          State::Continuing => continue,
+          State::Continuing => {}
         }
       }
     }
@@ -178,7 +186,11 @@ impl App {
       bail!("insufficient time elapsed to calculate wpm");
     }
 
-    let wpm = (words as f64) / minutes;
+    let words = u32::try_from(words)
+      .map(f64::from)
+      .map_err(|_| anyhow!("word count too large for wpm calculation"))?;
+
+    let wpm = words / minutes;
 
     if wpm.is_finite() {
       Ok(wpm)
@@ -274,13 +286,13 @@ mod tests {
       ..Default::default()
     };
 
-    assert_eq!(app.accuracy().unwrap(), 100.0);
+    assert_abs_diff_eq!(app.accuracy().unwrap(), 100.0, epsilon = 0.01);
 
     assert_eq!(app.handle_action(Action::Insert('t')), State::Continuing);
-    assert_eq!(app.accuracy().unwrap(), 100.0);
+    assert_abs_diff_eq!(app.accuracy().unwrap(), 100.0, epsilon = 0.01);
 
     assert_eq!(app.handle_action(Action::Insert('x')), State::Continuing);
-    assert_eq!(app.accuracy().unwrap(), 50.0);
+    assert_abs_diff_eq!(app.accuracy().unwrap(), 50.0, epsilon = 0.01);
 
     assert_eq!(app.handle_action(Action::Insert('s')), State::Continuing);
 
@@ -298,7 +310,7 @@ mod tests {
       ..Default::default()
     };
 
-    app.start_time = Instant::now() - Duration::from_secs(60);
+    app.start_time = Instant::now().checked_sub(Duration::from_secs(60)).unwrap();
 
     for c in "hello worl".chars() {
       app.handle_action(Action::Insert(c));
@@ -306,7 +318,7 @@ mod tests {
 
     assert_abs_diff_eq!(app.wpm().unwrap(), 2.0, epsilon = 0.01);
 
-    app.start_time = Instant::now() - Duration::from_secs(30);
+    app.start_time = Instant::now().checked_sub(Duration::from_secs(30)).unwrap();
 
     assert_abs_diff_eq!(app.wpm().unwrap(), 4.0, epsilon = 0.01);
 
