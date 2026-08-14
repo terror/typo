@@ -310,7 +310,7 @@ mod tests {
       ..Default::default()
     };
 
-    app.start_time = Instant::now().checked_sub(Duration::from_secs(60)).unwrap();
+    app.start_time = Instant::now().checked_sub(Duration::from_mins(1)).unwrap();
 
     for c in "hello worl".chars() {
       app.handle_action(Action::Insert(c));
